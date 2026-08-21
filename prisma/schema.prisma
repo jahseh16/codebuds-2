@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["codebuds"]
+}
+
+model Profile {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  password     String
+  username     String   @unique
+  full_name    String
+  bio          String   @default("")
+  avatar_url   String?
+  github_url   String?
+  linkedin_url String?
+  location     String   @default("")
+  skills       String[] @default([])
+  open_to      String   @default("collaboration")
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now())
+
+  posts           Post[]
+  likes           Like[]
+  comments        Comment[]     @relation("CommentUser")
+  projects        Project[]
+  sentBuddies     Buddy[]     @relation("BuddyRequester")
+  receivedBuddies Buddy[]     @relation("BuddyAddressee")
+  mentoredBy      Mentorship[] @relation("Mentor")
+  mentoring       Mentorship[] @relation("Mentee")
+  notifications   Notification[] @relation("NotificationUser")
+  actedOn         Notification[] @relation("NotificationActor")
+
+  @@schema("codebuds")
+  @@index([username])
+}
+
+model Post {
+  id         String   @id @default(uuid())
+  author_id  String
+  content    String
+  category   String   @default("general")
+  created_at DateTime @default(now())
+
+  author   Profile  @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  likes    Like[]
+  comments Comment[]
+
+  @@schema("codebuds")
+  @@index([author_id])
+  @@index([created_at(sort: Desc)])
+}model Like {
+  id        String   @id @default(uuid())
+  post_id   String
+  user_id   String
+  created_at DateTime @default(now())
+
+  post Post   @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@unique([post_id, user_id])
+  @@index([post_id])
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  post_id    String
+  user_id    String
+  content    String
+  created_at DateTime @default(now())
+
+  post Post   @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user Profile @relation("CommentUser", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@index([post_id])
+  @@index([user_id])
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  author_id   String
+  title       String
+  description String
+  tech_stack  String[] @default([])
+  repo_url    String?
+  live_url    String?
+  image_url   String?
+  stars       Int      @default(0)
+  created_at  DateTime @default(now())
+
+  author Profile @relation(fields: [author_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@index([author_id])
+  @@index([created_at(sort: Desc)])
+}
+
+model Buddy {
+  id           String   @id @default(uuid())
+  requester_id String
+  addressee_id String
+  status       String   @default("pending")
+  created_at   DateTime @default(now())
+
+  requester Profile @relation("BuddyRequester", fields: [requester_id], references: [id], onDelete: Cascade)
+  addressee Profile @relation("BuddyAddressee", fields: [addressee_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@unique([requester_id, addressee_id])
+  @@index([requester_id])
+  @@index([addressee_id])
+}
+
+model Mentorship {
+  id        String   @id @default(uuid())
+  mentor_id String
+  mentee_id String
+  topic     String
+  message   String   @default("")
+  status    String   @default("pending")
+  created_at DateTime @default(now())
+
+  mentor Profile @relation("Mentor", fields: [mentor_id], references: [id], onDelete: Cascade)
+  mentee Profile @relation("Mentee", fields: [mentee_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@index([mentor_id])
+  @@index([mentee_id])
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  user_id    String
+  actor_id   String?
+  type       String
+  message    String
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user  Profile  @relation("NotificationUser", fields: [user_id], references: [id], onDelete: Cascade)
+  actor Profile? @relation("NotificationActor", fields: [actor_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@index([user_id])
+  @@index([is_read])
+}

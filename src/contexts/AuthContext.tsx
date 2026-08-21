@@ -1,10 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import type { Session } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { auth as authApi } from '../lib/api'
 import type { Profile } from '../lib/types'
 
 interface AuthContextType {
-  session: Session | null
+  token: string | null
   profile: Profile | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error?: string }>
@@ -21,87 +20,74 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null)
+  const [token, setToken] = useState<string | null>(authApi.getToken())
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      if (!data.session) setLoading(false)
-    })
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-      if (!newSession) {
-        setProfile(null)
-        setLoading(false)
-      }
-    })
-
-    return () => listener.subscription.unsubscribe()
-  }, [])
-
-  useEffect(() => {
-    if (!session?.user) return
-    let cancelled = false
-
-    async function loadProfile() {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session!.user.id)
-        .maybeSingle()
-
-      if (!cancelled) {
-        setProfile(data as Profile | null)
-        setLoading(false)
-      }
+    if (!token) {
+      setLoading(false)
+      return
     }
 
-    loadProfile()
+    let cancelled = false
+    authApi.me()
+      .then((data) => {
+        if (!cancelled) {
+          setProfile(data as Profile)
+          setLoading(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          authApi.signOut()
+          setToken(null)
+          setProfile(null)
+          setLoading(false)
+        }
+      })
+
     return () => { cancelled = true }
-  }, [session])
+  }, [token])
 
   async function refreshProfile() {
-    if (!session?.user) return
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .maybeSingle()
-    setProfile(data as Profile | null)
+    if (!token) return
+    try {
+      const data = await authApi.me()
+      setProfile(data as Profile)
+    } catch {
+      // ignore
+    }
   }
 
   async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return { error: error.message }
-    return {}
+    try {
+      const data = await authApi.login(email, password)
+      setToken(data.token)
+      setProfile(data.profile)
+      return {}
+    } catch (err: any) {
+      return { error: err.message }
+    }
   }
 
   async function signUp(email: string, password: string, username: string, fullName: string) {
-    const { data, error } = await supabase.auth.signUp({ email, password })
-    if (error) return { error: error.message }
-
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        username,
-        full_name: fullName,
-      })
-      if (profileError) return { error: profileError.message }
+    try {
+      await authApi.register(email, password, username, fullName)
+      return {}
+    } catch (err: any) {
+      return { error: err.message }
     }
-
-    return {}
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    authApi.signOut()
+    setToken(null)
     setProfile(null)
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signIn, signUp, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ token, profile, loading, signIn, signUp, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

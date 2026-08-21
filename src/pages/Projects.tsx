@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Loader2, Plus, Star, Github, ExternalLink, X, Send } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { projects as projectsApi } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import type { Project } from '../lib/types'
 
@@ -10,19 +10,19 @@ function getInitials(name?: string | null): string {
 }
 
 export function Projects() {
-  const { session } = useAuth()
+  const { profile } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [showUploader, setShowUploader] = useState(false)
 
   async function loadProjects() {
     setLoading(true)
-    const { data } = await supabase
-      .from('projects')
-      .select('*, author:profiles(*)')
-      .order('created_at', { ascending: false })
-
-    if (data) setProjects(data as unknown as Project[])
+    try {
+      const data = await projectsApi.list()
+      setProjects(data as unknown as Project[])
+    } catch {
+      // ignore
+    }
     setLoading(false)
   }
 
@@ -137,24 +137,22 @@ function ProjectUploader({ onCreated, onClose }: { onCreated: () => void; onClos
     setLoading(true)
     setError('')
 
-    const { error: insertError } = await supabase.from('projects').insert({
-      title: title.trim(),
-      description: description.trim(),
-      tech_stack: techStack.split(',').map((t) => t.trim()).filter(Boolean),
-      repo_url: repoUrl.trim() || null,
-      live_url: liveUrl.trim() || null,
-      image_url: imageUrl.trim() || null,
-    })
-
-    setLoading(false)
-
-    if (insertError) {
-      setError(insertError.message)
-      return
+    try {
+      await projectsApi.create({
+        title: title.trim(),
+        description: description.trim(),
+        tech_stack: techStack.split(',').map((t) => t.trim()).filter(Boolean),
+        repo_url: repoUrl.trim() || null,
+        live_url: liveUrl.trim() || null,
+        image_url: imageUrl.trim() || null,
+      })
+      onCreated()
+      onClose()
+    } catch (err: any) {
+      setError(err.message)
     }
 
-    onCreated()
-    onClose()
+    setLoading(false)
   }
 
   return (

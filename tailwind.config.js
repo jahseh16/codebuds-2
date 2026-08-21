@@ -4,6 +4,47 @@ export default {
   theme: {
     extend: {
       colors: {
+        // shadcn/ui standard colors
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
+        card: {
+          DEFAULT: 'var(--card)',
+          foreground: 'var(--card-foreground)',
+        },
+        popover: {
+          DEFAULT: 'var(--popover)',
+          foreground: 'var(--popover-foreground)',
+        },
+        primary: {
+          DEFAULT: 'var(--primary)',
+          foreground: 'var(--primary-foreground)',
+        },
+        muted: {
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)',
+        },
+        destructive: {
+          DEFAULT: 'var(--destructive)',
+        },
+        border: {
+          DEFAULT: 'var(--border)',
+          light: 'var(--color-border-light)',
+        },
+        input: 'var(--input)',
+        ring: 'var(--ring)',
+        secondary: {
+          DEFAULT: 'var(--secondary)',
+          foreground: 'var(--secondary-foreground)',
+          hover: 'var(--color-secondary-hover)',
+          muted: 'var(--color-secondary-muted)',
+        },
+        accent: {
+          DEFAULT: 'var(--accent)',
+          foreground: 'var(--accent-foreground)',
+          hover: 'var(--color-accent-hover)',
+          muted: 'var(--color-accent-muted)',
+        },
+        // Custom project colors
         bg: {
           primary: 'var(--color-bg-primary)',
           secondary: 'var(--color-bg-secondary)',
@@ -11,24 +52,10 @@ export default {
           'card-hover': 'var(--color-bg-card-hover)',
           input: 'var(--color-bg-input)',
         },
-        border: {
-          DEFAULT: 'var(--color-border)',
-          light: 'var(--color-border-light)',
-        },
         text: {
           primary: 'var(--color-text-primary)',
           secondary: 'var(--color-text-secondary)',
           muted: 'var(--color-text-muted)',
-        },
-        accent: {
-          DEFAULT: 'var(--color-accent)',
-          hover: 'var(--color-accent-hover)',
-          muted: 'var(--color-accent-muted)',
-        },
-        secondary: {
-          DEFAULT: 'var(--color-secondary)',
-          hover: 'var(--color-secondary-hover)',
-          muted: 'var(--color-secondary-muted)',
         },
         success: {
           DEFAULT: 'var(--color-success)',

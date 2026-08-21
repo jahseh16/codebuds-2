@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Loader2, Save, Check } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { profiles as profilesApi } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 
 export function Settings() {
-  const { profile, session, refreshProfile } = useAuth()
+  const { profile, refreshProfile } = useAuth()
   const [fullName, setFullName] = useState('')
   const [username, setUsername] = useState('')
   const [bio, setBio] = useState('')
@@ -33,30 +33,30 @@ export function Settings() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!session?.user) return
+    if (!profile) return
     setLoading(true)
     setSaved(false)
 
-    const { error } = await supabase.from('profiles').update({
-      full_name: fullName.trim(),
-      username: username.trim(),
-      bio: bio.trim(),
-      avatar_url: avatarUrl.trim() || null,
-      github_url: githubUrl.trim() || null,
-      linkedin_url: linkedinUrl.trim() || null,
-      location: location.trim(),
-      skills: skills.split(',').map((s) => s.trim()).filter(Boolean),
-      open_to: openTo,
-      updated_at: new Date().toISOString(),
-    }).eq('id', session.user.id)
-
-    setLoading(false)
-
-    if (!error) {
+    try {
+      await profilesApi.update(profile.id, {
+        full_name: fullName.trim(),
+        username: username.trim(),
+        bio: bio.trim(),
+        avatar_url: avatarUrl.trim() || null,
+        github_url: githubUrl.trim() || null,
+        linkedin_url: linkedinUrl.trim() || null,
+        location: location.trim(),
+        skills: skills.split(',').map((s) => s.trim()).filter(Boolean),
+        open_to: openTo,
+      })
       setSaved(true)
       refreshProfile()
       setTimeout(() => setSaved(false), 3000)
+    } catch {
+      // ignore
     }
+
+    setLoading(false)
   }
 
   if (!profile) {

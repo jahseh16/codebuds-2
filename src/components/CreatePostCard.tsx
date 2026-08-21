@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Loader2, Send, X } from 'lucide-react'
-import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
+import { posts as postsApi } from '../lib/api'
 import type { PostCategory } from '../lib/types'
 
 const CATEGORIES: { value: PostCategory; label: string }[] = [
@@ -17,7 +16,6 @@ interface CreatePostCardProps {
 }
 
 export function CreatePostCard({ onCreated, onClose }: CreatePostCardProps) {
-  const { session } = useAuth()
   const [content, setContent] = useState('')
   const [category, setCategory] = useState<PostCategory>('general')
   const [loading, setLoading] = useState(false)
@@ -25,27 +23,22 @@ export function CreatePostCard({ onCreated, onClose }: CreatePostCardProps) {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!content.trim() || !session?.user) return
+    if (!content.trim()) return
 
     setLoading(true)
     setError('')
 
-    const { error: insertError } = await supabase.from('posts').insert({
-      content: content.trim(),
-      category,
-    })
-
-    setLoading(false)
-
-    if (insertError) {
-      setError(insertError.message)
-      return
+    try {
+      await postsApi.create(content.trim(), category)
+      setContent('')
+      setCategory('general')
+      onCreated()
+      onClose()
+    } catch (err: any) {
+      setError(err.message)
     }
 
-    setContent('')
-    setCategory('general')
-    onCreated()
-    onClose()
+    setLoading(false)
   }
 
   return (

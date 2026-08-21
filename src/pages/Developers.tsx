@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Loader2, Search, UserPlus, MapPin, Github, Linkedin } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { profiles as profilesApi, buddies as buddiesApi } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import type { Profile } from '../lib/types'
 
@@ -9,7 +9,7 @@ function getInitials(name: string): string {
 }
 
 export function Developers() {
-  const { session } = useAuth()
+  const { profile } = useAuth()
   const [developers, setDevelopers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -17,33 +17,25 @@ export function Developers() {
 
   useEffect(() => {
     async function load() {
-      const [devsRes, buddiesRes] = await Promise.all([
-        supabase.from('profiles').select('*').neq('id', session?.user?.id ?? '').order('created_at', { ascending: false }),
-        supabase.from('buddies').select('addressee_id').eq('requester_id', session?.user?.id ?? ''),
+      if (!profile) return
+      const [devs, myBuddies] = await Promise.all([
+        profilesApi.list(profile.id),
+        buddiesApi.list(profile.id),
       ])
-
-      if (devsRes.data) setDevelopers(devsRes.data as Profile[])
-      if (buddiesRes.data) setBuddyIds(new Set(buddiesRes.data.map((b: { addressee_id: string }) => b.addressee_id)))
+      setDevelopers(devs as Profile[])
+      setBuddyIds(new Set(myBuddies.map((b: any) => b.addressee_id)))
       setLoading(false)
     }
-    if (session?.user) load()
-  }, [session?.user])
+    load()
+  }, [profile])
 
   async function addBuddy(devId: string) {
-    if (!session?.user) return
-    const { error } = await supabase.from('buddies').insert({
-      requester_id: session.user.id,
-      addressee_id: devId,
-    })
-
-    if (!error) {
+    if (!profile) return
+    try {
+      await buddiesApi.create(devId)
       setBuddyIds((prev) => new Set(prev).add(devId))
-      await supabase.from('notifications').insert({
-        user_id: devId,
-        actor_id: session.user.id,
-        type: 'buddy_request',
-        message: 'sent you a buddy request',
-      })
+    } catch {
+      // ignore
     }
   }
 

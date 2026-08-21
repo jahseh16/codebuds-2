@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Loader2, Bell, Check, Heart, UserPlus, GraduationCap } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { notifications as notificationsApi } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import type { AppNotification, NotificationType } from '../lib/types'
 
@@ -33,31 +33,28 @@ const ICON_COLORS: Record<NotificationType, string> = {
 }
 
 export function Notifications() {
-  const { session } = useAuth()
+  const { profile } = useAuth()
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
 
   async function load() {
-    if (!session?.user) return
-    const { data } = await supabase
-      .from('notifications')
-      .select('*, actor:profiles(*)')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(50)
-
-    if (data) setNotifications(data as unknown as AppNotification[])
+    if (!profile) return
+    try {
+      const data = await notificationsApi.list()
+      setNotifications(data as unknown as AppNotification[])
+    } catch {
+      // ignore
+    }
     setLoading(false)
   }
 
   useEffect(() => {
     load()
-  }, [session?.user])
+  }, [profile])
 
   async function markAllRead() {
-    if (!session?.user) return
-    await supabase.from('notifications').update({ is_read: true })
-      .eq('user_id', session.user.id).eq('is_read', false)
+    if (!profile) return
+    await notificationsApi.markAllRead()
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
   }
 

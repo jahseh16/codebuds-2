@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { session, loading } = useAuth()
+  const { token, loading } = useAuth()
 
   if (loading) {
     return (
@@ -14,7 +14,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     )
   }
 
-  if (!session) {
+  if (!token) {
     return <Navigate to="/login" replace />
   }
 

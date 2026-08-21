@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { GitBranch, ArrowUpRight, Sparkles, TrendingUp, Star } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { profiles as profilesApi, projects as projectsApi, posts as postsApi } from '../lib/api'
 import type { Profile, Project } from '../lib/types'
 
 function getInitials(name: string): string {
@@ -15,29 +15,26 @@ export function RightSidebar() {
 
   useEffect(() => {
     async function loadData() {
-      const [devsRes, projRes, postsRes, topProjRes] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
-        supabase.from('projects').select('id', { count: 'exact', head: true }),
-        supabase.from('posts').select('id', { count: 'exact', head: true }),
-        supabase.from('projects').select('*, author:profiles(*)').order('stars', { ascending: false }).limit(3),
-      ])
+      try {
+        const [devsCount, projCount, postsCount, topProjects, buddyData] = await Promise.all([
+          profilesApi.count(),
+          projectsApi.count(),
+          postsApi.count(),
+          projectsApi.list('stars', 3),
+          profilesApi.list(),
+        ])
 
-      setStats({
-        developers: devsRes.count ?? 0,
-        projects: projRes.count ?? 0,
-        posts: postsRes.count ?? 0,
-      })
+        setStats({
+          developers: devsCount.count,
+          projects: projCount.count,
+          posts: postsCount.count,
+        })
 
-      if (topProjRes.data) {
-        setProjects(topProjRes.data as unknown as Project[])
+        setProjects(topProjects as unknown as Project[])
+        setBuddies((buddyData as Profile[]).slice(0, 3))
+      } catch {
+        // ignore
       }
-
-      const { data: buddyData } = await supabase
-        .from('profiles')
-        .select('*')
-        .limit(3)
-      if (buddyData) setBuddies(buddyData as Profile[])
-
       setLoading(false)
     }
     loadData()

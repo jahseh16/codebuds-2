@@ -15,6 +15,15 @@ export interface Profile {
 
 export type PostCategory = 'general' | 'mentorship' | 'project' | 'team'
 
+export interface Comment {
+  id: string
+  post_id: string
+  user_id: string
+  content: string
+  created_at: string
+  user?: Profile
+}
+
 export interface Post {
   id: string
   author_id: string
@@ -25,6 +34,7 @@ export interface Post {
   likes?: Like[]
   like_count?: number
   liked_by_me?: boolean
+  comment_count?: number
 }
 
 export interface Like {

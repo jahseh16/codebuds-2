@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Loader2, GraduationCap, BookOpen, Send, X, Check, Clock } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { profiles as profilesApi, mentorships as mentorshipsApi } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import type { Profile, Mentorship, MentorshipStatus } from '../lib/types'
 
@@ -16,32 +16,35 @@ const STATUS_STYLES: Record<MentorshipStatus, string> = {
 }
 
 export function Mentorship() {
-  const { session } = useAuth()
+  const { profile } = useAuth()
   const [mentors, setMentors] = useState<Profile[]>([])
   const [myRequests, setMyRequests] = useState<Mentorship[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState<Profile | null>(null)
 
   async function load() {
-    if (!session?.user) return
+    if (!profile) return
 
-    const [profilesRes, mentorshipsRes] = await Promise.all([
-      supabase.from('profiles').select('*').neq('id', session.user.id),
-      supabase.from('mentorships').select('*, mentor:profiles!mentor_id(*), mentee:profiles!mentee_id(*)')
-        .or(`mentee_id.eq.${session.user.id},mentor_id.eq.${session.user.id}`),
-    ])
+    try {
+      const [profilesData, mentorshipsData] = await Promise.all([
+        profilesApi.list(profile.id),
+        mentorshipsApi.list(),
+      ])
 
-    if (profilesRes.data) setMentors(profilesRes.data as Profile[])
-    if (mentorshipsRes.data) setMyRequests(mentorshipsRes.data as unknown as Mentorship[])
+      setMentors(profilesData as Profile[])
+      setMyRequests(mentorshipsData as unknown as Mentorship[])
+    } catch {
+      // ignore
+    }
     setLoading(false)
   }
 
   useEffect(() => {
     load()
-  }, [session?.user])
+  }, [profile])
 
   async function respondMentorship(id: string, status: MentorshipStatus) {
-    await supabase.from('mentorships').update({ status }).eq('id', id)
+    await mentorshipsApi.update(id, status)
     load()
   }
 
@@ -61,7 +64,7 @@ export function Mentorship() {
           </h2>
           <div className="space-y-3">
             {myRequests.map((m) => {
-              const isMentor = m.mentor_id === session?.user?.id
+              const isMentor = m.mentor_id === profile?.id
               const other = isMentor ? m.mentee : m.mentor
               return (
                 <div key={m.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
@@ -167,7 +170,6 @@ export function Mentorship() {
 }
 
 function MentorshipForm({ mentor, onCreated, onClose }: { mentor: Profile; onCreated: () => void; onClose: () => void }) {
-  const { session } = useAuth()
   const [topic, setTopic] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -175,33 +177,18 @@ function MentorshipForm({ mentor, onCreated, onClose }: { mentor: Profile; onCre
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!session?.user) return
     setLoading(true)
     setError('')
 
-    const { error: insertError } = await supabase.from('mentorships').insert({
-      mentor_id: mentor.id,
-      mentee_id: session.user.id,
-      topic: topic.trim(),
-      message: message.trim(),
-    })
-
-    setLoading(false)
-
-    if (insertError) {
-      setError(insertError.message)
-      return
+    try {
+      await mentorshipsApi.create(mentor.id, topic.trim(), message.trim())
+      onCreated()
+      onClose()
+    } catch (err: any) {
+      setError(err.message)
     }
 
-    await supabase.from('notifications').insert({
-      user_id: mentor.id,
-      actor_id: session.user.id,
-      type: 'mentorship_request',
-      message: `requested mentorship on ${topic.trim()}`,
-    })
-
-    onCreated()
-    onClose()
+    setLoading(false)
   }
 
   return (

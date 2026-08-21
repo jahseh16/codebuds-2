@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Loader2, Sparkles, MessageSquare } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { posts as postsApi, likes as likesApi } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { PostCard } from '../components/PostCard'
 import { CreatePostCard } from '../components/CreatePostCard'
@@ -15,11 +15,11 @@ const TABS: { value: PostCategory | 'all'; label: string }[] = [
 ]
 
 export function Feed() {
-  const { session } = useAuth()
+  const { profile } = useAuth()
   const [filter, setFilter] = useState<PostCategory | 'all'>('all')
   const [showComposer, setShowComposer] = useState(false)
   const [posts, setPosts] = useState<Post[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [loaded, setLoaded] = useState(false)
 
@@ -27,39 +27,23 @@ export function Feed() {
     setLoading(true)
     setError('')
 
-    let query = supabase
-      .from('posts')
-      .select('*, author:profiles(*), likes(*)')
-      .order('created_at', { ascending: false })
-      .limit(50)
-
-    if (filter !== 'all') {
-      query = query.eq('category', filter)
-    }
-
-    const { data, error: queryError } = await query
-
-    if (queryError) {
-      setError(queryError.message)
-      setLoading(false)
-      setLoaded(true)
-      return
-    }
-
-    const formattedPosts: Post[] = (data ?? []).map((p) => {
-      const likes = p.likes ?? []
-      return {
+    try {
+      const data = await postsApi.list(filter !== 'all' ? filter : undefined)
+      const formattedPosts: Post[] = (data ?? []).map((p: any) => ({
         ...p,
         author: p.author as Post['author'],
-        like_count: likes.length,
-        liked_by_me: likes.some((l: { user_id: string }) => l.user_id === session?.user?.id),
-      }
-    })
+        like_count: p.like_count ?? 0,
+        liked_by_me: p.liked_by_me ?? false,
+        comment_count: p.comment_count ?? 0,
+      }))
+      setPosts(formattedPosts)
+    } catch (err: any) {
+      setError(err.message)
+    }
 
-    setPosts(formattedPosts)
     setLoading(false)
     setLoaded(true)
-  }, [filter, session?.user?.id])
+  }, [filter])
 
   // Initial load
   if (!loaded && !loading) {
@@ -130,7 +114,7 @@ export function Feed() {
             <PostCard
               key={post.id}
               post={post}
-              canDelete={post.author_id === session?.user?.id}
+              canDelete={post.author_id === profile?.id}
               onDelete={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
               onToggleLike={(id) => {
                 setPosts((prev) =>
