@@ -1,28 +1,108 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ══════════════════════════════════════════════════
+   PROFILE — Keyframes & animations
+   ══════════════════════════════════════════════════ */
+
+/* Banner grid slow drift */
+@keyframes gridMove {
+  from { transform: translateY(0); }
+  to   { transform: translateY(26px); }
+}
+
+/* Badge ambient breathing glow */
+@keyframes badgeBreathe {
+  0%, 100% {
+    filter: brightness(1);
+    box-shadow: inset 0 0 0 1px var(--badge-accent-faint, rgba(255,255,255,0.15)), 0 0 0 transparent;
+  }
+  50% {
+    filter: brightness(1.08);
+    box-shadow: inset 0 0 0 1px var(--badge-accent-mid, rgba(255,255,255,0.3)), 0 0 13px var(--badge-glow, rgba(139,92,246,0.3));
+  }
+}
+
+/* Badge color sweep across surface */
+@keyframes edgeSweep {
+  0%, 52% { transform: translateX(-120%); opacity: 0; }
+  58%     { opacity: 0.72; }
+  76%, 100% { transform: translateX(120%); opacity: 0; }
+}
+
+/* Badge energetic underline pulse */
+@keyframes underlinePulse {
+  0%, 100% { transform: scaleX(0.55); opacity: 0.35; }
+  50%      { transform: scaleX(1); opacity: 0.88; }
+}
+
+/* Skill chip staggered entrance */
+@keyframes skillEnter {
+  from { opacity: 0; transform: translateX(-11px) scale(0.93); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Terminal bio typing */
+@keyframes terminalTyping {
+  to { max-width: 470px; }
+}
+
+/* Cursor blink */
+@keyframes cursorBlink {
+  50% { opacity: 0; }
+}
+
+/* Section fade-up entrance */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Generic status pulse (fallback) */
+@keyframes statusPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); }
+  50%      { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @layer base {
   :root {
-    --color-bg-primary: #0a0f0d;
-    --color-bg-secondary: #0f1614;
-    --color-bg-card: #131c19;
-    --color-bg-card-hover: #1a2521;
-    --color-bg-input: #0d1411;
-    --color-border: #1e2d27;
-    --color-border-light: #2a3d34;
+    --color-bg-primary: #09090b;
+    --color-bg-secondary: #0c0c0f;
+    --color-bg-card: #111113;
+    --color-bg-card-hover: #18181b;
+    --color-bg-input: #0a0a0c;
+    --color-border: #1e1e22;
+    --color-border-light: #27272a;
 
     --color-text-primary: #f0fdf4;
     --color-text-secondary: #94a3a0;
-    --color-text-muted: #5a6b65;
+    /* Lightened from #5a6b65 → #748a83 so muted text hits ≥4.5:1 on every
+       dark surface (bg-card #111113: 5.12:1, bg-card-hover: 4.81:1,
+       accent-muted chips: 4.61:1). Old value was 3.35:1 on cards. */
+    --color-text-muted: #748a83;
 
-    --color-accent: #14b8a6;
-    --color-accent-hover: #2dd4bf;
-    --color-accent-muted: rgba(20, 184, 166, 0.12);
-    --color-accent-glow: rgba(20, 184, 166, 0.25);
+    --color-accent: #7c3aed;
+    --color-accent-hover: #8b5cf6;
+    --color-accent-muted: rgba(124, 58, 237, 0.15);
+    --color-accent-glow: rgba(124, 58, 237, 0.25);
 
     --color-secondary: #f59e0b;
     --color-secondary-hover: #fbbf24;
@@ -49,8 +129,8 @@
     --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
     --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    --accent: #7c3aed;
+    --accent-foreground: #ffffff;
     --destructive: oklch(0.577 0.245 27.325);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
@@ -75,28 +155,61 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    @apply border-border;
+    font-family: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;
     outline-color: var(--ring);
+  }
+
+  /* Ensure safe-area support for mobile */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Hide scrollbar but keep scroll functionality */
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hidden {
+    scrollbar-width: none;
+  }
+
+  /* Prevent body scroll when drawer is open */
+  body.drawer-open {
+    overflow: hidden !important;
   }
 
   html {
     color-scheme: dark;
-    @apply font-sans;
+    font-family: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;
   }
 
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-      Oxygen, Ubuntu, Cantarell, sans-serif;
-    background-color: var(--color-bg-primary);
+    font-family: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;
+    background-color: #09090b;
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    @apply bg-background text-foreground;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    background-color: #09090b;
+    overflow: hidden;
   }
 
   #root {
-    min-height: 100vh;
+    width: 100%;
+    /* Móvil: 100vh ignora la barra del navegador y aplasta el input;
+       100dvh sigue el viewport real. 100vh queda como fallback. */
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    background-color: #09090b;
   }
 
   ::selection {
@@ -124,8 +237,9 @@
     background: var(--color-text-muted);
   }
   .theme {
-    --font-heading: var(--font-sans);
-    --font-sans: 'Inter Variable', sans-serif;
+    --font-heading: 'JetBrains Mono Variable', monospace;
+    --font-sans: 'JetBrains Mono Variable', monospace;
+    --font-mono: 'JetBrains Mono Variable', monospace;
   }
   .dark {
     --background: oklch(0.145 0 0);
@@ -140,8 +254,8 @@
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.269 0 0);
     --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
+    --accent: #7c3aed;
+    --accent-foreground: #ffffff;
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
@@ -166,19 +280,302 @@
   .card-glow {
     box-shadow:
       0 0 0 1px var(--color-border),
-      0 0 48px rgba(20, 184, 166, 0.06);
+      0 0 48px rgba(124, 58, 237, 0.06);
   }
 
   .card-glow-accent {
     box-shadow:
       0 0 0 1px var(--color-accent),
-      0 8px 32px rgba(20, 184, 166, 0.15);
+      0 8px 32px rgba(124, 58, 237, 0.15);
   }
 
   .glass {
-    background: rgba(19, 28, 25, 0.7);
+    background: rgba(17, 17, 19, 0.7);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* ══════════════════════════════════════════════════
+     PROFILE — Banner grid cyberpunk
+     ══════════════════════════════════════════════════ */
+  .banner-grid {
+    background:
+      linear-gradient(125deg, #101527, #17102b 55%, #101016);
+    position: relative;
+    overflow: hidden;
+  }
+  .banner-grid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(123, 113, 255, 0.11) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(123, 113, 255, 0.11) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: linear-gradient(#000, transparent);
+    mask-image: linear-gradient(#000, transparent);
+    animation: gridMove 16s linear infinite;
+  }
+
+  /* ══════════════════════════════════════════════════
+     PROFILE — el punto de estado ahora es Tailwind inline
+     (animate-ping) en Profile.tsx; sin reglas CSS propias.
+     ══════════════════════════════════════════════════ */
+
+  /* ══════════════════════════════════════════════════
+     PROFILE — Premium Badges (NO orbit circles)
+     Each badge: own color glow + sweep + underline pulse
+     ══════════════════════════════════════════════════ */
+  .badge {
+    --badge-accent: #ffd45f;
+    --badge-soft: rgba(255, 212, 95, 0.22);
+    --badge-accent-faint: rgba(255, 212, 95, 0.15);
+    --badge-accent-mid: rgba(255, 212, 95, 0.3);
+    --badge-glow: rgba(255, 212, 95, 0.3);
+    position: relative;
+    overflow: hidden;
+    border: 0;
+    border-radius: 8px;
+    padding: 7px 9px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--badge-accent) 13%, #121217), #101014);
+    color: var(--badge-accent);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--badge-accent) 32%, transparent),
+      0 0 0 rgba(0, 0, 0, 0);
+    font: 800 10px 'JetBrains Mono', monospace;
+    letter-spacing: 0.01em;
+    transition: transform 0.2s, box-shadow 0.25s, filter 0.2s;
+    cursor: pointer;
+    animation: badgeBreathe 4.8s ease-in-out infinite;
+  }
+  /* Color sweep across badge */
+  .badge::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(100deg, transparent 32%, color-mix(in srgb, var(--badge-accent) 74%, white) 50%, transparent 68%);
+    opacity: 0;
+    transform: translateX(-120%);
+    animation: edgeSweep 6.5s cubic-bezier(0.25, 0.8, 0.25, 1) infinite;
+  }
+  /* Energetic underline */
+  .badge::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 1px;
+    height: 1px;
+    background: var(--badge-accent);
+    opacity: 0.5;
+    box-shadow: 0 0 8px var(--badge-accent);
+    transform: scaleX(0.55);
+    transform-origin: left;
+    animation: underlinePulse 3.8s ease-in-out infinite;
+  }
+  .badge:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.15);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--badge-accent) 75%, transparent),
+      0 0 19px var(--badge-soft);
+  }
+  .badge:hover::before {
+    animation-duration: 1.15s;
+    opacity: 0.8;
+  }
+
+  /* Badge color variants */
+  .badge-vip {
+    --badge-accent: #ffd45f;
+    --badge-soft: rgba(255, 212, 95, 0.45);
+    --badge-accent-faint: rgba(255, 212, 95, 0.15);
+    --badge-accent-mid: rgba(255, 212, 95, 0.3);
+    --badge-glow: rgba(255, 212, 95, 0.3);
+  }
+  .badge-violet {
+    --badge-accent: #b494ff;
+    --badge-soft: rgba(139, 92, 246, 0.43);
+    --badge-accent-faint: rgba(139, 92, 246, 0.15);
+    --badge-accent-mid: rgba(139, 92, 246, 0.3);
+    --badge-glow: rgba(139, 92, 246, 0.3);
+  }
+  .badge-green {
+    --badge-accent: #4fe4af;
+    --badge-soft: rgba(52, 211, 153, 0.4);
+    --badge-accent-faint: rgba(52, 211, 153, 0.15);
+    --badge-accent-mid: rgba(52, 211, 153, 0.3);
+    --badge-glow: rgba(52, 211, 153, 0.3);
+  }
+  .badge-blue {
+    --badge-accent: #75bcff;
+    --badge-soft: rgba(91, 157, 255, 0.43);
+    --badge-accent-faint: rgba(91, 157, 255, 0.15);
+    --badge-accent-mid: rgba(91, 157, 255, 0.3);
+    --badge-glow: rgba(91, 157, 255, 0.3);
+  }
+  .badge-pink {
+    --badge-accent: #ff8fc4;
+    --badge-soft: rgba(236, 72, 153, 0.42);
+    --badge-accent-faint: rgba(236, 72, 153, 0.15);
+    --badge-accent-mid: rgba(236, 72, 153, 0.3);
+    --badge-glow: rgba(236, 72, 153, 0.3);
+  }
+
+  /* ══════════════════════════════════════════════════
+     PROFILE — Terminal cursor blink (violet)
+     ══════════════════════════════════════════════════ */
+  .cursor-blink {
+    display: inline-block;
+    width: 7px;
+    height: 15px;
+    margin-left: 4px;
+    background: #8b5cf6;
+    vertical-align: -3px;
+    animation: cursorBlink 1s steps(2) infinite;
+  }
+
+  /* ══════════════════════════════════════════════════
+     PROFILE — Edit button shine
+     ══════════════════════════════════════════════════ */
+  .btn-edit {
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.3s, transform 0.2s;
+  }
+  .btn-edit::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.5s;
+  }
+  .btn-edit:hover {
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.6), 0 0 60px rgba(139, 92, 246, 0.25);
+    transform: translateY(-2px);
+  }
+  .btn-edit:hover::before {
+    left: 150%;
+  }
+
+  /* ══════════════════════════════════════════════════
+     PROFILE — Input neon focus
+     ══════════════════════════════════════════════════ */
+  .input-neon {
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-neon:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 1px #8b5cf6, 0 0 18px rgba(139, 92, 246, 0.35);
+  }
+
+  /* ══════════════════════════════════════════════════
+     PROFILE — Tech stack chips (terminal style, per-color)
+     ══════════════════════════════════════════════════ */
+  .skill-chip {
+    --chip-accent: #5b9dff;
+    border: 0;
+    border-radius: 7px;
+    padding: 7px 8px;
+    color: var(--chip-accent);
+    background: color-mix(in srgb, var(--chip-accent) 9%, #0c0c10);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-accent) 27%, transparent);
+    font: 10px 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: 0.2s;
+    animation: skillEnter 0.45s both;
+  }
+  /* Small colored dot before each skill */
+  .skill-chip::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 5px;
+    border-radius: 2px;
+    background: var(--chip-accent);
+    box-shadow: 0 0 8px var(--chip-accent);
+  }
+  .skill-chip:hover {
+    transform: translateY(-2px);
+    background: color-mix(in srgb, var(--chip-accent) 16%, #0c0c10);
+    box-shadow:
+      inset 0 0 0 1px var(--chip-accent),
+      0 0 17px color-mix(in srgb, var(--chip-accent) 34%, transparent);
+  }
+
+  /* Per-technology colors */
+  .skill-chip[data-tech='JavaScript']  { --chip-accent: #f7df1e; }
+  .skill-chip[data-tech='TypeScript']  { --chip-accent: #3178c6; }
+  .skill-chip[data-tech='React']       { --chip-accent: #61dafb; }
+  .skill-chip[data-tech='Node.js']     { --chip-accent: #72c449; }
+  .skill-chip[data-tech='Python']      { --chip-accent: #5ca6df; }
+  .skill-chip[data-tech='HTML']        { --chip-accent: #e34f26; }
+  .skill-chip[data-tech='CSS']         { --chip-accent: #264de4; }
+  .skill-chip[data-tech='MongoDB']     { --chip-accent: #47a248; }
+  .skill-chip[data-tech='Docker']      { --chip-accent: #2496ed; }
+  .skill-chip[data-tech='Go']          { --chip-accent: #00add8; }
+  .skill-chip[data-tech='Rust']        { --chip-accent: #dea584; }
+  .skill-chip[data-tech='Java']        { --chip-accent: #f89820; }
+  .skill-chip[data-tech='C++']         { --chip-accent: #659ad2; }
+  .skill-chip[data-tech='PHP']         { --chip-accent: #777bb4; }
+  .skill-chip[data-tech='Ruby']        { --chip-accent: #cc342d; }
+  .skill-chip[data-tech='Swift']       { --chip-accent: #f05138; }
+  .skill-chip[data-tech='Kotlin']      { --chip-accent: #7f52ff; }
+  .skill-chip[data-tech='Vue']         { --chip-accent: #42b883; }
+  .skill-chip[data-tech='Angular']     { --chip-accent: #dd0031; }
+  .skill-chip[data-tech='Svelte']      { --chip-accent: #ff3e00; }
+  .skill-chip[data-tech='Next.js']     { --chip-accent: #ffffff; }
+  .skill-chip[data-tech='Tailwind']    { --chip-accent: #38bdf8; }
+  .skill-chip[data-tech='PostgreSQL']  { --chip-accent: #336791; }
+  .skill-chip[data-tech='Redis']       { --chip-accent: #dc382d; }
+  .skill-chip[data-tech='GraphQL']     { --chip-accent: #e535ab; }
+  .skill-chip[data-tech='AWS']         { --chip-accent: #ff9900; }
+  .skill-chip[data-tech='Firebase']    { --chip-accent: #ffca28; }
+  .skill-chip[data-tech='Linux']       { --chip-accent: #fcc624; }
+  .skill-chip[data-tech='Git']         { --chip-accent: #f14e32; }
+
+  /* Staggered entrance delays */
+  .skill-chip:nth-child(1)  { animation-delay: 0s; }
+  .skill-chip:nth-child(2)  { animation-delay: 0.05s; }
+  .skill-chip:nth-child(3)  { animation-delay: 0.1s; }
+  .skill-chip:nth-child(4)  { animation-delay: 0.15s; }
+  .skill-chip:nth-child(5)  { animation-delay: 0.2s; }
+  .skill-chip:nth-child(6)  { animation-delay: 0.25s; }
+  .skill-chip:nth-child(7)  { animation-delay: 0.3s; }
+  .skill-chip:nth-child(8)  { animation-delay: 0.35s; }
+  .skill-chip:nth-child(9)  { animation-delay: 0.4s; }
+  .skill-chip:nth-child(10) { animation-delay: 0.45s; }
+
+  /* ══════════════════════════════════════════════════
+     PROFILE — Social icons hover
+     ══════════════════════════════════════════════════ */
+  .social-btn {
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--color-bg-input, #0c0c10);
+    box-shadow: inset 0 0 0 1px rgba(80, 133, 255, 0.27);
+    color: #c9c6ce;
+    font: bold 14px 'Inter', sans-serif;
+    cursor: pointer;
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .social-btn:hover {
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.12);
+    box-shadow: 0 0 17px rgba(139, 92, 246, 0.22);
+    transform: translateY(-2px);
   }
 }
 
@@ -188,34 +585,78 @@
     to { opacity: 1; }
   }
 
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(.95) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
   @keyframes slide-up {
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
-  @keyframes scale-in {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+  @keyframes slide-in-left {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
   }
 
   @keyframes glow-pulse {
-    0%, 100% { box-shadow: 0 0 20px rgba(20, 184, 166, 0.15); }
-    50% { box-shadow: 0 0 40px rgba(20, 184, 166, 0.3); }
+    0%, 100% { box-shadow: 0 0 20px rgba(124, 58, 237, 0.15); }
+    50% { box-shadow: 0 0 40px rgba(124, 58, 237, 0.3); }
   }
 
   .animate-fade-in {
-    animation: fade-in 0.3s ease-out;
+    animation: fade-in .15s ease-out;
   }
 
   .animate-slide-up {
     animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  @keyframes sheet-up {
+    from { opacity: 0.5; transform: translateY(100%); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Bottom sheet móvil: sale desde abajo */
+  .animate-sheet-up {
+    animation: sheet-up 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
   .animate-scale-in {
-    animation: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: scale-in .2s cubic-bezier(.2, 1.2, .4, 1);
   }
 
   .animate-glow-pulse {
     animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  .animate-slide-in-left {
+    animation: slide-in-left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Terminal typing animation — bio text */
+  .terminal-typed {
+    display: inline-block;
+    max-width: 0;
+    overflow: hidden;
+    vertical-align: bottom;
+    white-space: nowrap;
+    animation: terminalTyping 2.4s 0.75s steps(48, end) forwards;
+  }
+
+  /* Section fade-up entrance */
+  .section-fade-up {
+    animation: fadeUp 0.6s both;
+  }
+  .section-fade-up-delay-1 {
+    animation: fadeUp 0.6s 0.23s both;
+  }
+  .section-fade-up-delay-2 {
+    animation: fadeUp 0.6s 0.32s both;
   }
 }

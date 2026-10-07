@@ -74,6 +74,10 @@ export default {
           muted: 'var(--color-gold-muted)',
         },
       },
+      fontFamily: {
+        mono: ["'JetBrains Mono Variable'", 'monospace'],
+        sans: ["'JetBrains Mono Variable'", 'monospace'],
+      },
     },
   },
   plugins: [],

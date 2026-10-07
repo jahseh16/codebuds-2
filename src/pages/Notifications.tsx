@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Loader2, Bell, Check, Heart, UserPlus, GraduationCap } from 'lucide-react'
 import { notifications as notificationsApi } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
+import { useChat } from '../contexts/ChatContext'
+import { UserLink } from '../components/UserLink'
 import type { AppNotification, NotificationType } from '../lib/types'
 
 function timeAgo(dateStr: string): string {
@@ -34,6 +36,8 @@ const ICON_COLORS: Record<NotificationType, string> = {
 
 export function Notifications() {
   const { profile } = useAuth()
+  // `latestNotification` changes on every `new_notification` socket event
+  const { latestNotification, markNotificationsRead } = useChat()
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -50,12 +54,13 @@ export function Notifications() {
 
   useEffect(() => {
     load()
-  }, [profile])
+  }, [profile, latestNotification])
 
   async function markAllRead() {
     if (!profile) return
     await notificationsApi.markAllRead()
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
+    markNotificationsRead()
   }
 
   const unreadCount = notifications.filter((n) => !n.is_read).length
@@ -64,7 +69,7 @@ export function Notifications() {
     <div className="space-y-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Notifications</h1>
+          <h1 className="text-xl font-bold text-text-primary md:text-2xl">Notifications</h1>
           <p className="mt-1 text-sm text-text-secondary">
             {unreadCount > 0 ? `${unreadCount} unread` : 'You are all caught up'}
           </p>
@@ -72,7 +77,7 @@ export function Notifications() {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:border-border-light hover:text-text-primary"
+            className="flex items-center gap-1.5 rounded-lg bg-bg-card px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-card-hover hover:text-text-primary"
           >
             <Check className="h-3.5 w-3.5" />
             Mark all read
@@ -91,10 +96,10 @@ export function Notifications() {
             return (
               <div
                 key={n.id}
-                className={`flex items-center gap-3 rounded-xl border p-4 transition-colors ${
+                className={`flex items-center gap-3 rounded-xl p-4 transition-colors ${
                   n.is_read
-                    ? 'border-border bg-bg-card'
-                    : 'border-accent/20 bg-accent-muted/30'
+                    ? 'bg-bg-card'
+                    : 'bg-accent-muted/30'
                 }`}
               >
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${ICON_COLORS[n.type] ?? 'text-text-muted bg-bg-card-hover'}`}>
@@ -102,7 +107,21 @@ export function Notifications() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-text-primary">
-                    {n.actor?.full_name ?? 'Someone'}{' '}
+                    {n.actor ? (
+                      <UserLink
+                        userId={n.actor.id}
+                        username={n.actor.username}
+                        name={n.actor.full_name}
+                        avatarUrl={n.actor.avatar_url}
+                        size="sm"
+                        showName
+                        showUsername={false}
+                        disableNavigate={false}
+                        className="inline-flex"
+                      />
+                    ) : (
+                      'Someone'
+                    )}{' '}
                     <span className="text-text-secondary">{n.message}</span>
                   </p>
                   <p className="mt-0.5 text-xs text-text-muted">{timeAgo(n.created_at)}</p>
@@ -113,11 +132,11 @@ export function Notifications() {
           })}
         </div>
       ) : (
-        <div className="rounded-2xl border border-border bg-bg-card p-20 text-center">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-muted">
-            <Bell className="h-8 w-8 text-accent" />
+        <div className="rounded-2xl bg-bg-card p-10 text-center sm:p-12 md:p-20">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-muted md:h-16 md:w-16">
+            <Bell className="h-7 w-7 text-accent md:h-8 md:w-8" />
           </div>
-          <p className="text-lg font-medium text-text-primary">No notifications</p>
+          <p className="text-base font-medium text-text-primary md:text-lg">No notifications</p>
           <p className="mt-1 text-sm text-text-muted">You will see updates here when people interact with you.</p>
         </div>
       )}

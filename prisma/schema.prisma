@@ -15,39 +15,95 @@ model Profile {
   full_name    String
   bio          String   @default("")
   avatar_url   String?
+  banner_url   String?  // profile banner: image (.jpg/.png/.webp/.gif) or video (.mp4/.webm)
   github_url   String?
   linkedin_url String?
   location     String   @default("")
   skills       String[] @default([])
   open_to      String   @default("collaboration")
+
+  // Matching fields
+  age_range    String   @default("")       // "18-24", "25-34", "35-44", "45+"
+  city         String   @default("")       // Approximate city only
+  interests    String[] @default([])        // ["coding", "gaming", "design", ...]
+  looking_for  String[] @default([])        // ["study_buddy", "project_collab", "gaming_buddy", "mentor", "dating"]
+  availability String   @default("anytime") // "anytime", "evenings", "weekends", "flexible"
+  visibility   String   @default("public")  // "public", "matches_only", "hidden"
+  age_verified Boolean  @default(false)     // Must be true for dating category
+  last_active  DateTime @default(now())
+
+  // Location fields (optional, approximate only)
+  country      String?  // Country name
+  country_code String?  // ISO-3166 alpha-2, uppercase
+  region       String?  // Region/state/province
+  timezone     String?  // Timezone string
+
+  // Following system
+  followingFrom Follow[] @relation("FollowFollower")
+  followedBy    Follow[] @relation("FollowTarget")
+
   created_at   DateTime @default(now())
   updated_at   DateTime @default(now())
 
   posts           Post[]
   likes           Like[]
-  comments        Comment[]     @relation("CommentUser")
+  comments        Comment[]       @relation("CommentUser")
   projects        Project[]
-  sentBuddies     Buddy[]     @relation("BuddyRequester")
-  receivedBuddies Buddy[]     @relation("BuddyAddressee")
-  mentoredBy      Mentorship[] @relation("Mentor")
-  mentoring       Mentorship[] @relation("Mentee")
-  notifications   Notification[] @relation("NotificationUser")
-  actedOn         Notification[] @relation("NotificationActor")
+  sentBuddies     Buddy[]         @relation("BuddyRequester")
+  receivedBuddies Buddy[]         @relation("BuddyAddressee")
+  mentoredBy      Mentorship[]    @relation("Mentor")
+  mentoring       Mentorship[]    @relation("Mentee")
+  notifications   Notification[]  @relation("NotificationUser")
+  actedOn         Notification[]  @relation("NotificationActor")
+  sentMessages    Message[] @relation("MessageSender")
+  conversationsA  Conversation[] @relation("ConvUserA")
+  conversationsB  Conversation[] @relation("ConvUserB")
+  savedPosts      SavedPost[]
+  savedProjects   ProjectSave[]
+  userNote        UserNote?
+
+  // Matching relations
+  sentVibes       Vibe[]          @relation("VibeSender")
+  receivedVibes   Vibe[]          @relation("VibeReceiver")
+  matchesA        Match[]         @relation("MatchUserA")
+  matchesB        Match[]         @relation("MatchUserB")
+  blocking        Block[]         @relation("BlockBlocker")
+  blockedBy       Block[]         @relation("BlockBlocked")
+  reportsMade     Report[]        @relation("ReportReporter")
+  reportsReceived Report[]        @relation("ReportReported")
 
   @@schema("codebuds")
   @@index([username])
 }
 
+model Follow {
+  id          String   @id @default(uuid())
+  follower_id String
+  following_id String
+  created_at  DateTime @default(now())
+
+  follower  Profile @relation("FollowFollower", fields: [follower_id], references: [id], onDelete: Cascade)
+  following Profile @relation("FollowTarget", fields: [following_id], references: [id], onDelete: Cascade)
+
+  @@unique([follower_id, following_id])
+  @@schema("codebuds")
+  @@index([follower_id])
+  @@index([following_id])
+}
+
 model Post {
-  id         String   @id @default(uuid())
-  author_id  String
-  content    String
-  category   String   @default("general")
-  created_at DateTime @default(now())
+  id          String   @id @default(uuid())
+  author_id   String
+  content     String
+  category    String   @default("general")
+  link_preview Json?
+  created_at  DateTime @default(now())
 
   author   Profile  @relation(fields: [author_id], references: [id], onDelete: Cascade)
   likes    Like[]
   comments Comment[]
+  views    PostView[]
+  savedBy  SavedPost[]
 
   @@schema("codebuds")
   @@index([author_id])
@@ -86,14 +142,20 @@ model Project {
   author_id   String
   title       String
   description String
+  status      String   @default("idea")
   tech_stack  String[] @default([])
+  looking_for String[] @default([])
   repo_url    String?
   live_url    String?
+  file_url    String?
   image_url   String?
   stars       Int      @default(0)
+  save_count  Int      @default(0)
   created_at  DateTime @default(now())
+  updated_at  DateTime @default(now())
 
-  author Profile @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  author Profile    @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  saves  ProjectSave[]
 
   @@schema("codebuds")
   @@index([author_id])
@@ -148,4 +210,180 @@ model Notification {
   @@schema("codebuds")
   @@index([user_id])
   @@index([is_read])
+}
+
+model Conversation {
+  id             String   @id @default(uuid())
+  user_a_id      String
+  user_b_id      String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @default(now())
+  muted_by       String[] @default([]) // user ids that muted notifications for this conversation
+
+  userA Profile @relation("ConvUserA", fields: [user_a_id], references: [id], onDelete: Cascade)
+  userB Profile @relation("ConvUserB", fields: [user_b_id], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([user_a_id, user_b_id])
+  @@schema("codebuds")
+  @@index([user_a_id])
+  @@index([user_b_id])
+}
+
+model PostView {
+  id         String   @id @default(uuid())
+  post_id    String
+  viewer_id  String?
+  session_id String?
+  created_at DateTime @default(now())
+
+  post Post @relation(fields: [post_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@unique([post_id, viewer_id])
+  @@unique([post_id, session_id])
+  @@index([post_id])
+  @@index([viewer_id])
+}
+
+model SavedPost {
+  id         String   @id @default(uuid())
+  user_id    String
+  post_id    String
+  created_at DateTime @default(now())
+
+  user Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  post Post   @relation(fields: [post_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@unique([user_id, post_id])
+  @@index([user_id])
+  @@index([post_id])
+}
+
+model ProjectSave {
+  id         String   @id @default(uuid())
+  user_id    String
+  project_id String
+  created_at DateTime @default(now())
+
+  user    Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, project_id])
+  @@schema("codebuds")
+  @@index([user_id])
+  @@index([project_id])
+}
+
+model Message {
+  id              String   @id @default(uuid())
+  conversation_id String
+  sender_id       String
+  text            String
+  read            Boolean  @default(false)
+  created_at      DateTime @default(now())
+
+  // ── Chat upgrades (receipts, replies, reactions, moderation) ──
+  reply_to_id     String?   // quoted message id (plain column, fetched separately)
+  reactions       Json?     @default("[]") // [{ user_id, emoji }]
+  delivered_at    DateTime? // receipt: recipient client received it
+  deleted_for_all Boolean   @default(false) // deleted for everyone (author only)
+  deleted_by      String[]  @default([]) // user ids that deleted it for themselves
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  sender       Profile      @relation("MessageSender", fields: [sender_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@index([conversation_id])
+  @@index([sender_id])
+  @@index([created_at(sort: Desc)])
+}
+
+// ═══════════════════════════════════════════════════════
+// MATCHING SYSTEM
+// ═══════════════════════════════════════════════════════
+
+model Vibe {
+  id          String   @id @default(uuid())
+  sender_id   String
+  receiver_id String
+  status      String   @default("pending") // pending | accepted | declined
+  created_at  DateTime @default(now())
+
+  sender   Profile @relation("VibeSender", fields: [sender_id], references: [id], onDelete: Cascade)
+  receiver Profile @relation("VibeReceiver", fields: [receiver_id], references: [id], onDelete: Cascade)
+
+  @@unique([sender_id, receiver_id])
+  @@schema("codebuds")
+  @@index([sender_id])
+  @@index([receiver_id])
+  @@index([status])
+}
+
+model Match {
+  id         String   @id @default(uuid())
+  user_a_id  String
+  user_b_id  String
+  created_at DateTime @default(now())
+
+  userA Profile @relation("MatchUserA", fields: [user_a_id], references: [id], onDelete: Cascade)
+  userB Profile @relation("MatchUserB", fields: [user_b_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_a_id, user_b_id])
+  @@schema("codebuds")
+  @@index([user_a_id])
+  @@index([user_b_id])
+}
+
+model Block {
+  id          String   @id @default(uuid())
+  blocker_id  String
+  blocked_id  String
+  created_at  DateTime @default(now())
+
+  blocker Profile @relation("BlockBlocker", fields: [blocker_id], references: [id], onDelete: Cascade)
+  blocked Profile @relation("BlockBlocked", fields: [blocked_id], references: [id], onDelete: Cascade)
+
+  @@unique([blocker_id, blocked_id])
+  @@schema("codebuds")
+  @@index([blocker_id])
+  @@index([blocked_id])
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  reporter_id String
+  reported_id String
+  reason      String   // spam | harassment | inappropriate | underage | other
+  description String   @default("")
+  status      String   @default("pending") // pending | reviewed | resolved
+  created_at  DateTime @default(now())
+
+  reporter Profile @relation("ReportReporter", fields: [reporter_id], references: [id], onDelete: Cascade)
+  reported Profile @relation("ReportReported", fields: [reported_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@index([reporter_id])
+  @@index([reported_id])
+  @@index([status])
+}
+
+// ═══════════════════════════════════════════════════
+// NOTES — carrusel de Notas de Voz/Música en Messages
+// Una nota por usuario (texto ≤ 60 chars + pista opcional)
+// ═══════════════════════════════════════════════════
+
+model UserNote {
+  id         String   @id @default(uuid())
+  user_id    String   @unique
+  text       String
+  track      Json?    // { id, name, artist, artwork, previewUrl, genre? }
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  user Profile @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@schema("codebuds")
+  @@index([updated_at])
 }

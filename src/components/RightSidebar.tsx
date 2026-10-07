@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
-import { GitBranch, ArrowUpRight, Sparkles, TrendingUp, Star } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { GitBranch, ArrowUpRight, Sparkles, TrendingUp, Star, MessageCircle } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
 import { profiles as profilesApi, projects as projectsApi, posts as postsApi } from '../lib/api'
+import { UserLink } from './UserLink'
 import type { Profile, Project } from '../lib/types'
 
 function getInitials(name: string): string {
@@ -8,6 +11,8 @@ function getInitials(name: string): string {
 }
 
 export function RightSidebar() {
+  const navigate = useNavigate()
+  const { requireAuth } = useAuth()
   const [stats, setStats] = useState({ developers: 0, projects: 0, posts: 0 })
   const [buddies, setBuddies] = useState<Profile[]>([])
   const [projects, setProjects] = useState<Project[]>([])
@@ -21,7 +26,9 @@ export function RightSidebar() {
           projectsApi.count(),
           postsApi.count(),
           projectsApi.list('stars', 3),
-          profilesApi.list(),
+          // Cap suggested buddies at 5 — we only render 3, so no need to
+          // download the whole user table on every page load (mobile data)
+          profilesApi.list(undefined, 5),
         ])
 
         setStats({
@@ -41,13 +48,13 @@ export function RightSidebar() {
   }, [])
 
   return (
-    <aside className="hidden w-80 shrink-0 overflow-y-auto border-l border-border bg-bg-primary lg:block">
-      <div className="sticky top-0 space-y-5 p-5">
+    <aside className="hidden h-full w-80 shrink-0 overflow-y-auto bg-bg-primary lg:block">
+      <div className="space-y-5 p-5">
         {/* Trending Stats */}
-        <section className="rounded-2xl border border-border bg-bg-card p-5">
+        <section className="rounded-2xl bg-bg-card p-5">
           <div className="mb-4 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-accent" />
-            <h3 className="text-sm font-semibold text-text-primary">Community</h3>
+            <h2 className="text-sm font-semibold text-text-primary">Community</h2>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-bg-primary p-3 text-center">
@@ -66,10 +73,10 @@ export function RightSidebar() {
         </section>
 
         {/* Suggested Buddies */}
-        <section className="rounded-2xl border border-border bg-bg-card p-5">
+        <section className="rounded-2xl bg-bg-card p-5">
           <div className="mb-4 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-gold" />
-            <h3 className="text-sm font-semibold text-text-primary">Suggested Buddies</h3>
+            <h2 className="text-sm font-semibold text-text-primary">Suggested Buddies</h2>
           </div>
           {loading ? (
             <div className="space-y-3">
@@ -80,19 +87,32 @@ export function RightSidebar() {
           ) : buddies.length > 0 ? (
             <div className="space-y-3">
               {buddies.map((buddy) => (
-                <div key={buddy.id} className="group flex items-center gap-3 rounded-xl p-2 transition-colors hover:bg-bg-card-hover">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-xs font-bold text-accent">
-                    {buddy.avatar_url ? (
-                      <img src={buddy.avatar_url} alt={buddy.full_name} className="h-full w-full rounded-full object-cover" />
-                    ) : (
-                      getInitials(buddy.full_name)
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-text-primary">{buddy.full_name}</p>
-                    <p className="truncate text-xs text-text-muted">
-                      {buddy.skills.slice(0, 2).join(' · ') || 'Developer'}
-                    </p>
+                <div key={buddy.id} className="group rounded-xl p-2 transition-colors hover:bg-bg-card-hover">
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <UserLink
+                        userId={buddy.id}
+                        username={buddy.username}
+                        name={buddy.full_name}
+                        avatarUrl={buddy.avatar_url}
+                        size="sm"
+                        showName
+                        className="min-w-0"
+                      />
+                      <p className="ml-10 mt-0.5 truncate text-xs text-text-muted">
+                        {buddy.skills.slice(0, 2).join(' · ') || 'Developer'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!requireAuth()) return
+                        navigate(`/messages/${buddy.username}`)
+                      }}
+                      className="shrink-0 rounded-lg p-1.5 text-text-muted transition-all hover:bg-accent/10 hover:text-accent"
+                      title={`Message ${buddy.full_name}`}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -103,10 +123,10 @@ export function RightSidebar() {
         </section>
 
         {/* Featured Projects */}
-        <section className="rounded-2xl border border-border bg-bg-card p-5">
+        <section className="rounded-2xl bg-bg-card p-5">
           <div className="mb-4 flex items-center gap-2">
             <GitBranch className="h-4 w-4 text-secondary" />
-            <h3 className="text-sm font-semibold text-text-primary">Featured Projects</h3>
+            <h2 className="text-sm font-semibold text-text-primary">Featured Projects</h2>
           </div>
           {loading ? (
             <div className="space-y-3">
@@ -119,7 +139,7 @@ export function RightSidebar() {
               {projects.map((project) => (
                 <div
                   key={project.id}
-                  className="group cursor-pointer rounded-xl border border-border p-3 transition-all duration-200 hover:border-border-light hover:bg-bg-card-hover"
+                  className="group cursor-pointer rounded-xl p-3 transition-all duration-200 hover:bg-bg-card-hover"
                 >
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
